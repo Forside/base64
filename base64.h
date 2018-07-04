@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define ENCODING_METHOD 2
+#define ENCODING_METHOD 3
 
 /*char encodingTable[] = {
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -138,44 +138,47 @@ char *base64encode(const uint8_t *data, size_t size)
 		}*/
 	}
 
-	if (missing == 2) {
-		const uint8_t *d = size > 3
-			? data+(size-excess)
-			: data;
+	switch (missing) {
+		case 2: {
+			const uint8_t *d = size > 3
+				? data+(size-excess)
+				: data;
 
-		// char 1
-		chBits = *d >> 2;
-		b64text[b64inc++] = encodeChar(chBits);
+			// char 1
+			chBits = *d >> 2;
+			b64text[b64inc++] = encodeChar(chBits);
 
-		// char 2
-		chBits = (*d << 4) & 0x3F;
-		b64text[b64inc++] = encodeChar(chBits);
+			// char 2
+			chBits = (*d << 4) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
 
-		// char 3
-		b64text[b64inc++] = '=';
+			// char 3
+			b64text[b64inc++] = '=';
 
-		// char 4
-		b64text[b64inc++] = '=';
-	}
-	else if (missing == 1) {		
-		const uint8_t *d = size > 3
-			? data+(size-excess)
-			: data;
+			// char 4
+			b64text[b64inc++] = '=';
+		} break;
 
-		// char 1
-		chBits = *d >> 2;
-		b64text[b64inc++] = encodeChar(chBits);
+		case 1: {
+			const uint8_t *d = size > 3
+				? data+(size-excess)
+				: data;
 
-		// char 2
-		chBits = ((*d << 4) | (*(d+1) >> 4)) & 0x3F;
-		b64text[b64inc++] = encodeChar(chBits);
+			// char 1
+			chBits = *d >> 2;
+			b64text[b64inc++] = encodeChar(chBits);
 
-		// char 3
-		chBits = (*(d+1) << 2) & 0x3F;
-		b64text[b64inc++] = encodeChar(chBits);
+			// char 2
+			chBits = ((*d << 4) | (*(d+1) >> 4)) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
 
-		// char 4
-		b64text[b64inc++] = '=';
+			// char 3
+			chBits = (*(d+1) << 2) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
+
+			// char 4
+			b64text[b64inc++] = '=';
+		} break;
 	}
 
 	return b64text;
@@ -194,6 +197,40 @@ char *base64encode(const uint8_t *data, size_t size)
 
 	//for (size_t i=b64size-missing; i<b64size; ++i)
 	//	b64text[i] = '=';
+	for (char *c=b64text+(b64size-missing); c<b64text+b64size; ++c)
+		*c = '=';
+
+	uint8_t chBits;
+
+	const uint8_t *d = data;
+	while (d < data+size) {
+		switch ((d - data) % 3) {
+			case 0: {
+				chBits = *d >> 2;
+				b64text[b64inc++] = encodeChar(chBits);
+				chBits = (*d << 4) & 0x3F;
+			} break;
+
+			case 1: {
+				chBits |= (*d >> 4) & 0x3F;
+				b64text[b64inc++] = encodeChar(chBits);
+				chBits = (*d << 2) & 0x3F;
+			} break;
+
+			case 2: {
+				chBits |= *d >> 6;
+				b64text[b64inc++] = encodeChar(chBits);
+				chBits = *d & 0x3F;
+				b64text[b64inc++] = encodeChar(chBits);
+			} break;
+		}
+		++d;
+	}
+
+	if (missing)
+		b64text[b64inc] = encodeChar(chBits);
+
+	return b64text;
 }
 
 #endif
