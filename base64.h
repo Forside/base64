@@ -26,6 +26,7 @@ uint8_t decodingTable[] = {
 
 char encodeChar(uint8_t charBits)
 {
+	charBits &= 0x3F;
 	if (charBits <= 25)
 		return 'A' + charBits;
 	else if (charBits <= 51)
@@ -42,7 +43,18 @@ char encodeChar(uint8_t charBits)
 
 uint8_t decodeChar(char b64char)
 {
-
+	if (b64char >= 'A' && b64char <= 'Z')
+		return b64char - 'A';
+	else if (b64char >= 'a' && b64char <= 'z')
+		return b64char - 'a' + 26;
+	else if (b64char >= '0' && b64char <= '9')
+		return b64char - '0' + 62;
+	else if (b64char == '+')
+		return 62;
+	else if (b64char == '/')
+		return 63;
+	else
+		return 0xFF;
 }
 
 #if ENCODING_METHOD == 1
@@ -186,7 +198,7 @@ char *base64encode(const uint8_t *data, size_t size)
 
 #elif ENCODING_METHOD == 3
 
-char *base64encode(const uint8_t *data, size_t size)
+char *base64encode(const uint8_t *data, size_t size, size_t *destSize = NULL)
 {
 	const uint8_t missing = (3 - (size % 3)) % 3;
 	const size_t b64size = ((size + missing) / 3) * 4;
@@ -195,42 +207,84 @@ char *base64encode(const uint8_t *data, size_t size)
 	b64text[b64size] = '\0';
 	size_t b64inc = 0;
 
-	//for (size_t i=b64size-missing; i<b64size; ++i)
-	//	b64text[i] = '=';
 	for (char *c=b64text+(b64size-missing); c<b64text+b64size; ++c)
 		*c = '=';
 
 	uint8_t chBits;
 
-	const uint8_t *d = data;
-	while (d < data+size) {
+	for (const uint8_t *d=data; d<data+size; ++d) {
 		switch ((d - data) % 3) {
 			case 0: {
 				chBits = *d >> 2;
 				b64text[b64inc++] = encodeChar(chBits);
-				chBits = (*d << 4) & 0x3F;
+				chBits = *d << 4;
 			} break;
 
 			case 1: {
-				chBits |= (*d >> 4) & 0x3F;
+				chBits |= *d >> 4;
 				b64text[b64inc++] = encodeChar(chBits);
-				chBits = (*d << 2) & 0x3F;
+				chBits = *d << 2;
 			} break;
 
 			case 2: {
 				chBits |= *d >> 6;
 				b64text[b64inc++] = encodeChar(chBits);
-				chBits = *d & 0x3F;
+				chBits = *d;
 				b64text[b64inc++] = encodeChar(chBits);
 			} break;
 		}
-		++d;
 	}
 
 	if (missing)
 		b64text[b64inc] = encodeChar(chBits);
 
+	if (destSize != NULL)
+		*destSize = b64size;
+
 	return b64text;
 }
 
 #endif
+
+
+uint8_t *base64decode(const char *b64text, size_t length, size_t *destSize = NULL)
+{
+	const size_t maxDataSize = length / 4 * 3;
+	uint8_t *data = (uint8_t*) malloc(maxDataSize);
+	size_t dataInc = 0;
+
+	uint8_t dataBits;
+
+	for (const char *c=b64text; c<b64text+length && *c!='='; ++c) {
+		switch ((c - b64text) % 4) {
+			case 0: {
+				dataBits = *c << 2;
+			} break;
+			
+			case 1: {
+				dataBits |= *c >> 4;
+				data[dataInc++] = decodeChar(dataBits);
+				dataBits = *c << 4;
+			} break;
+			
+			case 2: {
+				dataBits |= *c >> 2;
+				data[dataInc++] = decodeChar(dataBits);
+				dataBits = *c << 6;
+			} break;
+			
+			case 3: {
+				dataBits |= *c;
+				data[dataInc++] = decodeChar(dataBits);
+			} break;
+		}
+	}
+
+	if (dataInc <= maxDataSize)
+		data[dataInc] = decodeChar(dataBits);
+
+	if (destSize != NULL)
+		*destSize = dataInc-1;
+
+	return data;
+}
