@@ -9,9 +9,11 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#define ENCODING_METHOD 2
 
 /*char encodingTable[] = {
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -22,13 +24,14 @@ uint8_t decodingTable[] = {
 
 };*/
 
-char encodeChar(uint8_t charBits) {
+char encodeChar(uint8_t charBits)
+{
 	if (charBits <= 25)
 		return 'A' + charBits;
 	else if (charBits <= 51)
-		return 'a' + charBits;
+		return 'a' + charBits-26;
 	else if (charBits <= 61)
-		return '0' + charBits;
+		return '0' + charBits-62;
 	else if (charBits == 62)
 		return '+';
 	else if (charBits == 63)
@@ -37,21 +40,25 @@ char encodeChar(uint8_t charBits) {
 		return '=';
 }
 
-uint8_t decodeChar(char b64char) {
+uint8_t decodeChar(char b64char)
+{
 
 }
 
-char *base64encode(uint8_t *data, size_t size) {
-	uint8_t padding = size % 3;
-	size_t b64size = (size/3)*4+padding;
+#if ENCODING_METHOD == 1
+char *base64encode(const uint8_t *data, size_t size)
+{
+	const uint8_t missing = (3 - (size % 3)) % 3;
+	const size_t b64size = ((size + missing) / 3) * 4;
+
 	char *b64text = (char*) malloc(b64size+1);
 	b64text[b64size] = '\0';
 	size_t b64inc = 0;
 
-	//for (size_t i=b64size-padding; i<b64size; ++i)
+	//for (size_t i=b64size-missing; i<b64size; ++i)
 	//	b64text[i] = '=';
 	
-	for (size_t i=0; i<size; i=i+3) {
+	for (size_t i=0; i<size; i+=3) {
 		uint8_t ch1bits, ch2bits, ch3bits, ch4bits;
 
 		ch1bits = data[i] >> 2;
@@ -77,3 +84,116 @@ char *base64encode(uint8_t *data, size_t size) {
 
 	return b64text;
 }
+
+#elif ENCODING_METHOD == 2
+
+char *base64encode(const uint8_t *data, size_t size)
+{
+	const uint8_t excess = size % 3;
+	const uint8_t missing = (3 - excess) % 3;
+	const size_t b64size = ((size + missing) / 3) * 4;
+
+	char *b64text = (char*) malloc(b64size+1);
+	b64text[b64size] = '\0';
+	size_t b64inc = 0;
+	
+	uint8_t chBits;
+
+	if (size >= 3) {
+		for (const uint8_t *d=data; d<data+(size-excess); d+=3) {
+			// char 1
+			chBits = *d >> 2;
+			b64text[b64inc++] = encodeChar(chBits);
+
+			// char 2
+			chBits = ((*d << 4) | (*(d+1) >> 4)) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
+
+			// char 3
+			chBits = ((*(d+1) << 2) | *(d+2) >> 6) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
+
+			// char 4
+			chBits = *(d+2) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
+		}
+
+		/*const uint8_t *dataEndWithoutExcess = data+(size-excess);
+		while (data != dataEndWithoutExcess) {
+			// char 1
+			chBits = *data >> 2;
+			b64text[b64inc++] = encodeChar(chBits);
+
+			// char 2
+			chBits = ((*data << 4) | (*++data >> 4)) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
+
+			// char 3
+			chBits = ((*data << 2) | *++data >> 6) & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
+
+			// char 4
+			chBits = *data++ & 0x3F;
+			b64text[b64inc++] = encodeChar(chBits);
+		}*/
+	}
+
+	if (missing == 2) {
+		const uint8_t *d = size > 3
+			? data+(size-excess)
+			: data;
+
+		// char 1
+		chBits = *d >> 2;
+		b64text[b64inc++] = encodeChar(chBits);
+
+		// char 2
+		chBits = (*d << 4) & 0x3F;
+		b64text[b64inc++] = encodeChar(chBits);
+
+		// char 3
+		b64text[b64inc++] = '=';
+
+		// char 4
+		b64text[b64inc++] = '=';
+	}
+	else if (missing == 1) {		
+		const uint8_t *d = size > 3
+			? data+(size-excess)
+			: data;
+
+		// char 1
+		chBits = *d >> 2;
+		b64text[b64inc++] = encodeChar(chBits);
+
+		// char 2
+		chBits = ((*d << 4) | (*(d+1) >> 4)) & 0x3F;
+		b64text[b64inc++] = encodeChar(chBits);
+
+		// char 3
+		chBits = (*(d+1) << 2) & 0x3F;
+		b64text[b64inc++] = encodeChar(chBits);
+
+		// char 4
+		b64text[b64inc++] = '=';
+	}
+
+	return b64text;
+}
+
+#elif ENCODING_METHOD == 3
+
+char *base64encode(const uint8_t *data, size_t size)
+{
+	const uint8_t missing = (3 - (size % 3)) % 3;
+	const size_t b64size = ((size + missing) / 3) * 4;
+
+	char *b64text = (char*) malloc(b64size+1);
+	b64text[b64size] = '\0';
+	size_t b64inc = 0;
+
+	//for (size_t i=b64size-missing; i<b64size; ++i)
+	//	b64text[i] = '=';
+}
+
+#endif
