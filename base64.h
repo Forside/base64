@@ -198,7 +198,7 @@ char *base64encode(const uint8_t *data, size_t size)
 
 #elif ENCODING_METHOD == 3
 
-char *base64encode(const uint8_t *data, size_t size, size_t *destSize = NULL)
+size_t base64encode(const uint8_t *data, size_t size, char **dest)
 {
 	const uint8_t missing = (3 - (size % 3)) % 3;
 	const size_t b64size = ((size + missing) / 3) * 4;
@@ -238,16 +238,15 @@ char *base64encode(const uint8_t *data, size_t size, size_t *destSize = NULL)
 	if (missing)
 		b64text[b64inc] = encodeChar(chBits);
 
-	if (destSize != NULL)
-		*destSize = b64size;
+	*dest = b64text;
 
-	return b64text;
+	return b64size;
 }
 
 #endif
 
 
-uint8_t *base64decode(const char *b64text, size_t length, size_t *destSize = NULL)
+size_t base64decode(const char *b64text, size_t length, uint8_t **dest)
 {
 	const size_t maxDataSize = length / 4 * 3;
 	uint8_t *data = (uint8_t*) malloc(maxDataSize);
@@ -283,8 +282,7 @@ uint8_t *base64decode(const char *b64text, size_t length, size_t *destSize = NUL
 	if (dataInc <= maxDataSize)
 		data[dataInc] = decodeChar(dataBits);
 
-	if (destSize != NULL)
-		*destSize = dataInc-1;
+	*dest = data;
 
-	return data;
+	return dataInc-1;
 }
