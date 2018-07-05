@@ -54,29 +54,29 @@ size_t base64encode(const uint8_t *data, size_t size, char **dest)
 	b64text[b64size] = '\0';
 	size_t b64inc = 0;
 
-	for (char *c=b64text+(b64size-missing); c<b64text+b64size; ++c)
-		*c = '=';
+	for (size_t i=b64size-missing; i<b64size; ++i)
+		b64text[i] = '=';
 
 	uint8_t chBits;
 
-	for (const uint8_t *d=data; d<data+size; ++d) {
-		switch ((d - data) % 3) {
+	for (size_t i=0; i<size; ++i) {
+		switch (i % 3) {
 			case 0: {
-				chBits = *d >> 2;
+				chBits = data[i] >> 2;
 				b64text[b64inc++] = encodeChar(chBits);
-				chBits = *d << 4;
+				chBits = data[i] << 4;
 			} break;
 
 			case 1: {
-				chBits |= *d >> 4;
+				chBits |= data[i] >> 4;
 				b64text[b64inc++] = encodeChar(chBits);
-				chBits = *d << 2;
+				chBits = data[i] << 2;
 			} break;
 
 			case 2: {
-				chBits |= *d >> 6;
+				chBits |= data[i] >> 6;
 				b64text[b64inc++] = encodeChar(chBits);
-				chBits = *d;
+				chBits = data[i];
 				b64text[b64inc++] = encodeChar(chBits);
 			} break;
 		}
@@ -98,26 +98,26 @@ size_t base64decode(const char *b64text, size_t length, uint8_t **dest)
 
 	uint8_t dataBits;
 
-	for (const char *c=b64text; c<b64text+length && *c!='='; ++c) {
-		switch ((c - b64text) % 4) {
+	for (size_t i=0; i<length && b64text[i] != '='; ++i) {
+		switch (i % 4) {
 			case 0: {
-				dataBits = decodeChar(*c) << 2;
+				dataBits = decodeChar(b64text[i]) << 2;
 			} break;
 			
 			case 1: {
-				dataBits |= decodeChar(*c) >> 4;
+				dataBits |= decodeChar(b64text[i]) >> 4;
 				data[dataInc++] = dataBits;
-				dataBits = decodeChar(*c) << 4;
+				dataBits = decodeChar(b64text[i]) << 4;
 			} break;
 			
 			case 2: {
-				dataBits |= decodeChar(*c) >> 2;
+				dataBits |= decodeChar(b64text[i]) >> 2;
 				data[dataInc++] = dataBits;
-				dataBits = decodeChar(*c) << 6;
+				dataBits = decodeChar(b64text[i]) << 6;
 			} break;
 			
 			case 3: {
-				dataBits |= decodeChar(*c);
+				dataBits |= decodeChar(b64text[i]);
 				data[dataInc++] = dataBits;
 			} break;
 		}
