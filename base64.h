@@ -257,32 +257,29 @@ size_t base64decode(const char *b64text, size_t length, uint8_t **dest)
 	for (const char *c=b64text; c<b64text+length && *c!='='; ++c) {
 		switch ((c - b64text) % 4) {
 			case 0: {
-				dataBits = *c << 2;
+				dataBits = decodeChar(*c) << 2;
 			} break;
 			
 			case 1: {
-				dataBits |= *c >> 4;
-				data[dataInc++] = decodeChar(dataBits);
-				dataBits = *c << 4;
+				dataBits |= decodeChar(*c) >> 4;
+				data[dataInc++] = dataBits;
+				dataBits = decodeChar(*c) << 4;
 			} break;
 			
 			case 2: {
-				dataBits |= *c >> 2;
-				data[dataInc++] = decodeChar(dataBits);
-				dataBits = *c << 6;
+				dataBits |= decodeChar(*c) >> 2;
+				data[dataInc++] = dataBits;
+				dataBits = decodeChar(*c) << 6;
 			} break;
 			
 			case 3: {
-				dataBits |= *c;
-				data[dataInc++] = decodeChar(dataBits);
+				dataBits |= decodeChar(*c);
+				data[dataInc++] = dataBits;
 			} break;
 		}
 	}
 
-	if (dataInc <= maxDataSize)
-		data[dataInc] = decodeChar(dataBits);
-
 	*dest = data;
 
-	return dataInc-1;
+	return dataInc;
 }
