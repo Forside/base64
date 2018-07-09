@@ -20,13 +20,13 @@ char encodeChar(uint8_t charBits)
 	else if (charBits <= 51)
 		return 'a' + charBits-26;
 	else if (charBits <= 61)
-		return '0' + charBits-62;
+		return '0' + charBits-52;
 	else if (charBits == 62)
 		return '+';
 	else if (charBits == 63)
 		return '/';
-	else
-		return '=';
+	//else
+	//	return '=';
 }
 
 uint8_t decodeChar(char b64char)
