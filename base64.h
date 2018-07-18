@@ -12,6 +12,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define GET_MISSING_BYTES_FOR_B64(size) ((3 - (size % 3)) % 3)
+#define GET_B64_ENCODED_SIZE(size) (((size + GET_MISSING_BYTES_FOR_B64(size)) / 3) * 4)
+#define GET_B64_ENCODED_SIZE2(size, missing) (((size + missing) / 3) * 4)
+#define GET_B64_MAX_DECODED_SIZE(length) (length / 4 * 3)
+
 char encodeChar(uint8_t charBits)
 {
 	charBits &= 0x3F;
@@ -45,17 +50,16 @@ uint8_t decodeChar(char b64char)
 		return 0xFF;
 }
 
-size_t base64encode(const uint8_t *data, size_t size, char **dest)
+size_t base64encode(const uint8_t *data, size_t size, char *dest)
 {
-	const uint8_t missing = (3 - (size % 3)) % 3;
-	const size_t b64size = ((size + missing) / 3) * 4;
+	const uint8_t missing = GET_MISSING_BYTES_FOR_B64(size); // (3 - (size % 3)) % 3;
+	const size_t b64size = GET_B64_ENCODED_SIZE2(size, missing); // ((size + missing) / 3) * 4;
 
-	char *b64text = (char*) malloc(b64size+1);
-	b64text[b64size] = '\0';
+	dest[b64size] = '\0';
 	size_t b64inc = 0;
 
 	for (size_t i=b64size-missing; i<b64size; ++i)
-		b64text[i] = '=';
+		dest[i] = '=';
 
 	uint8_t chBits;
 
@@ -63,39 +67,43 @@ size_t base64encode(const uint8_t *data, size_t size, char **dest)
 		switch (i % 3) {
 			case 0: {
 				chBits = data[i] >> 2;
-				b64text[b64inc++] = encodeChar(chBits);
+				dest[b64inc++] = encodeChar(chBits);
 				chBits = data[i] << 4;
 			} break;
 
 			case 1: {
 				chBits |= data[i] >> 4;
-				b64text[b64inc++] = encodeChar(chBits);
+				dest[b64inc++] = encodeChar(chBits);
 				chBits = data[i] << 2;
 			} break;
 
 			case 2: {
 				chBits |= data[i] >> 6;
-				b64text[b64inc++] = encodeChar(chBits);
+				dest[b64inc++] = encodeChar(chBits);
 				chBits = data[i];
-				b64text[b64inc++] = encodeChar(chBits);
+				dest[b64inc++] = encodeChar(chBits);
 			} break;
 		}
 	}
 
 	if (missing)
-		b64text[b64inc] = encodeChar(chBits);
-
-	*dest = b64text;
+		dest[b64inc] = encodeChar(chBits);
 
 	return b64size;
 }
 
-size_t base64decode(const char *b64text, size_t length, uint8_t **dest)
+size_t base64encode(const uint8_t *data, size_t size, char **dest)
 {
-	const size_t maxDataSize = length / 4 * 3;
-	uint8_t *data = (uint8_t*) malloc(maxDataSize);
-	size_t dataInc = 0;
+	//const uint8_t missing = GET_MISSING_BYTES_FOR_B64(size); // (3 - (size % 3)) % 3;
+	const size_t b64size = GET_B64_ENCODED_SIZE(size); // ((size + missing) / 3) * 4;
 
+	*dest = (char*) malloc(b64size+1);
+	return base64encode(data, size, *dest);	
+}
+
+size_t base64decode(const char *b64text, size_t length, uint8_t *dest)
+{
+	size_t dataInc = 0;
 	uint8_t dataBits;
 
 	for (size_t i=0; i<length && b64text[i] != '='; ++i) {
@@ -106,24 +114,29 @@ size_t base64decode(const char *b64text, size_t length, uint8_t **dest)
 			
 			case 1: {
 				dataBits |= decodeChar(b64text[i]) >> 4;
-				data[dataInc++] = dataBits;
+				dest[dataInc++] = dataBits;
 				dataBits = decodeChar(b64text[i]) << 4;
 			} break;
 			
 			case 2: {
 				dataBits |= decodeChar(b64text[i]) >> 2;
-				data[dataInc++] = dataBits;
+				dest[dataInc++] = dataBits;
 				dataBits = decodeChar(b64text[i]) << 6;
 			} break;
 			
 			case 3: {
 				dataBits |= decodeChar(b64text[i]);
-				data[dataInc++] = dataBits;
+				dest[dataInc++] = dataBits;
 			} break;
 		}
 	}
 
-	*dest = data;
-
 	return dataInc;
+}
+
+size_t base64decode(const char *b64text, size_t length, uint8_t **dest)
+{
+	const size_t maxDataSize = GET_B64_MAX_DECODED_SIZE(length); // length / 4 * 3;
+	*dest = (uint8_t*) malloc(maxDataSize);
+	return base64decode(b64text, length, *dest);
 }
