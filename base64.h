@@ -41,7 +41,7 @@ uint8_t decodeChar(char b64char)
 	else if (b64char >= 'a' && b64char <= 'z')
 		return b64char - 'a' + 26;
 	else if (b64char >= '0' && b64char <= '9')
-		return b64char - '0' + 62;
+		return b64char - '0' + 52;
 	else if (b64char == '+')
 		return 62;
 	else if (b64char == '/')
