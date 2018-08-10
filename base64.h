@@ -9,6 +9,9 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef BASE64_H_
+#define BASE64_H_
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -17,7 +20,7 @@
 #define GET_B64_ENCODED_SIZE2(size, missing) (((size + missing) / 3) * 4)
 #define GET_B64_MAX_DECODED_SIZE(length) (length / 4 * 3)
 
-char encodeChar(uint8_t charBits)
+static char encodeChar(uint8_t charBits)
 {
 	charBits &= 0x3F;
 	if (charBits <= 25)
@@ -34,7 +37,7 @@ char encodeChar(uint8_t charBits)
 	//	return '=';
 }
 
-uint8_t decodeChar(char b64char)
+static uint8_t decodeChar(char b64char)
 {
 	if (b64char >= 'A' && b64char <= 'Z')
 		return b64char - 'A';
@@ -50,7 +53,7 @@ uint8_t decodeChar(char b64char)
 		return 0xFF;
 }
 
-size_t base64encode(const uint8_t *data, size_t size, char *dest)
+static size_t base64encode(const uint8_t *data, size_t size, char *dest)
 {
 	const uint8_t missing = GET_MISSING_BYTES_FOR_B64(size); // (3 - (size % 3)) % 3;
 	const size_t b64size = GET_B64_ENCODED_SIZE2(size, missing); // ((size + missing) / 3) * 4;
@@ -92,7 +95,7 @@ size_t base64encode(const uint8_t *data, size_t size, char *dest)
 	return b64size;
 }
 
-size_t base64encodeA(const uint8_t *data, size_t size, char **dest)
+static size_t base64encodeA(const uint8_t *data, size_t size, char **dest)
 {
 	//const uint8_t missing = GET_MISSING_BYTES_FOR_B64(size); // (3 - (size % 3)) % 3;
 	const size_t b64size = GET_B64_ENCODED_SIZE(size); // ((size + missing) / 3) * 4;
@@ -101,7 +104,7 @@ size_t base64encodeA(const uint8_t *data, size_t size, char **dest)
 	return base64encode(data, size, *dest);	
 }
 
-size_t base64decode(const char *b64text, size_t length, uint8_t *dest)
+static size_t base64decode(const char *b64text, size_t length, uint8_t *dest)
 {
 	size_t dataInc = 0;
 	uint8_t dataBits;
@@ -134,9 +137,11 @@ size_t base64decode(const char *b64text, size_t length, uint8_t *dest)
 	return dataInc;
 }
 
-size_t base64decodeA(const char *b64text, size_t length, uint8_t **dest)
+static size_t base64decodeA(const char *b64text, size_t length, uint8_t **dest)
 {
 	const size_t maxDataSize = GET_B64_MAX_DECODED_SIZE(length); // length / 4 * 3;
 	*dest = (uint8_t*) malloc(maxDataSize);
 	return base64decode(b64text, length, *dest);
 }
+
+#endif
