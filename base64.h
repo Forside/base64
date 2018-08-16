@@ -15,6 +15,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define GET_MISSING_BYTES_FOR_B64(size) ((3 - (size % 3)) % 3)
 #define GET_B64_ENCODED_SIZE(size) (((size + GET_MISSING_BYTES_FOR_B64(size)) / 3) * 4)
 #define GET_B64_ENCODED_SIZE2(size, missing) (((size + missing) / 3) * 4)
@@ -143,5 +147,9 @@ static size_t base64decodeA(const char *b64text, size_t length, uint8_t **dest)
 	*dest = (uint8_t*) malloc(maxDataSize);
 	return base64decode(b64text, length, *dest);
 }
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif
