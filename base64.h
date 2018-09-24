@@ -35,7 +35,7 @@ static char encodeChar(uint8_t charBits)
 		return '0' + charBits-52;
 	else if (charBits == 62)
 		return '+';
-	else if (charBits == 63)
+	else /*if (charBits == 63)*/
 		return '/';
 	//else
 	//	return '=';
